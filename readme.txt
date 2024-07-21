@@ -1,12 +1,13 @@
-PORTS
-product:8003
+# PORTS
 
-frontend:port:7000
+- ## product:8003
 
-user:8001
+- ## frontend:port:7000
 
-order:8002
+- ## user:8001
 
-delivery:8006
+- ## order:8002
 
-gateway:8000
+- ## delivery:8006
+
+- ## gateway:8000
