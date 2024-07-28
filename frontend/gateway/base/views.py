@@ -8,12 +8,15 @@ from .models import *
 from django.urls import reverse
 from datetime import datetime
 from collections import *
+from django.core.cache import cache
+
 
 # Create your views here.
 
 
 @csrf_exempt
 def login(request):
+     
     message=''
     if request.method=='POST':
         username=request.POST.get('username')
@@ -27,13 +30,15 @@ def login(request):
         }
 
         # Make the POST request
-        response = requests.post(url, json=body)
+        response = requests.post('http://127.0.0.1:8000/auth/login/', json=body)
 
         # Check the status code of the response
         if response.status_code == 201 or response.status_code == 200:
             print('Success:', response.json())
             user_id=response.json()['user']['id']
             message='Success'
+            cache.set('isAuth',True, timeout=60 * 15)
+            cache.set('userid',user_id, timeout=60 * 15)
             if UserModel.objects.filter(id=1):
                 user=UserModel.objects.get(id=1)
                 user.user_id=user_id
@@ -72,21 +77,26 @@ def register(request):
         response = requests.post(url, json=body)
 
         # Check the status code of the response
-        if response.status_code == 201:
+        if response.status_code>= 200:
             print('Success:', response.json())
             user_id=response.json()['user']['id']
             message='Success'
             return redirect(login)
         else:
             print('Failed:', response.status_code, response.text)
-            message='Failed:'+ str(response.status_code)+ response.text
+            message='Failed:'+ str(response.status_code)
 
 
     return render(request, 'register.html',{'message':message})
 
 
 def home(request,user_id):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
     api_url = "http://127.0.0.1:8000/listings/"
     data=[]
     try:
@@ -106,7 +116,13 @@ def home(request,user_id):
 
 @csrf_exempt
 def profile(request,user_id):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
+
     url = f'http://127.0.0.1:8000/auth/users/{user_id}'
     response = requests.get(url)
     message=''
@@ -171,20 +187,37 @@ def profile(request,user_id):
     return render(request, 'profile.html',context)
         
 def dashboard(request,user_id):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+
     api_url = f"http://127.0.0.1:8000/orders"
     shop_url= f"http://127.0.0.1:8000/shops"
+    product_url= f"http://127.0.0.1:8000/listings"
+    delivery_url= f"http://127.0.0.1:8000/deliveries"
     context={'data':[]}
     try:
         response = requests.get(api_url)
         shop_response=requests.get(shop_url)
+        products_response=requests.get(product_url)
+        deliveries_response=requests.get(delivery_url)
         response.raise_for_status()  # Raise an exception for HTTP errors
         shop_response.raise_for_status()
+        products_response.raise_for_status()
+        deliveries_response.raise_for_status()
         res = response.json()
         list=shop_response.json()
-        print(list,res)
+        deliv=deliveries_response.json()
+        prod=products_response.json()
+
+        print(deliv)
         orders=[]
         shops=[]
+        products=[]
+        deliveries=[]
+
         for item in res['orders']:
             if item["user_id"]==user_id:
                 orders.append(item)
@@ -194,12 +227,28 @@ def dashboard(request,user_id):
             if item["created_by"]==user_id:
                 shops.append(item)
 
+        for item in deliv:
+            for item2 in orders:
+                if item["order_id"]==item2["id"]:
+                    deliveries.append(item)
+
+        for item in prod:
+            for shop in shops:
+                if item["shop_id"]==shop["id"]:
+                    products.append(item)
+
+            
+
         context={
             'id':id,
             'orders':orders,
             'shops':shops,
+            'products':products,
+            'deliveries':deliveries,
             'order_tally':len(orders),
-            'shop_tally':len(shops)
+            'shop_tally':len(shops),
+            'product_tally':len(products),
+            'delivery_tally':len(deliveries)
         }
     except requests.exceptions.RequestException as e:
         print('error')
@@ -207,15 +256,20 @@ def dashboard(request,user_id):
 
 
 def contact(request):
-    id=UserModel.objects.get(id=1).user_id
+    id=cache.get('userid',default=-1)
     return render(request, 'contact.html',{'id':id})
 
 def about(request):
-    id=UserModel.objects.get(id=1).user_id
+    id=cache.get('userid',default=-1)
     return render(request, 'about.html',{'id':1})
 
 def product(request,user_id):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
     api_url = "http://127.0.0.1:8000/api/products/"
     context={'data':[]}
     try:
@@ -228,7 +282,12 @@ def product(request,user_id):
     return render(request, 'products.html',context)
 
 def product_detail(request,product_id):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
     api_url = f"http://127.0.0.1:8000/listings/{product_id}"
     context={'data':{}}
     try:
@@ -247,7 +306,11 @@ def product_detail(request,product_id):
 
 @csrf_exempt
 def products_add(request):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
     message=''
     shop_list=requests.get("http://127.0.0.1:8000/shops").json()
     shops=[]
@@ -295,7 +358,11 @@ def products_add(request):
 
 @csrf_exempt
 def products_edit(request):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
 
     message=''
     shop_list=requests.get("http://127.0.0.1:8000/shops").json()
@@ -372,7 +439,13 @@ def products_edit(request):
     return render(request, 'product_edit.html',context)
 
 def shop(request):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
+
     api_url = f"http://127.0.0.1:8000/shops"
     context={'data':[]}
     try:
@@ -391,7 +464,12 @@ def shop(request):
 
 @csrf_exempt
 def shop_add(request):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
     message=''
     if request.method=='POST':
         userid=id
@@ -425,7 +503,12 @@ def shop_add(request):
 
 
 def shop_detail(request,shop_id):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
     api_url = f"http://127.0.0.1:8000/shops/{shop_id}"
     context={'data':{}}
     try:
@@ -443,20 +526,23 @@ def shop_detail(request,shop_id):
 
 @csrf_exempt
 def shop_delete(request):
-    id=UserModel.objects.get(id=1).user_id
-    message=''
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
     shop_list=requests.get("http://127.0.0.1:8000/shops").json()
     shops=[]
 
     for item in shop_list:
         if item['created_by']==id:
             shops.append(item)
+
     if request.method=='POST':
 
         shopid=request.POST.get('shopid')
-
-
-
         url = f'http://127.0.0.1:8000/shops/{shopid}/'
 
         # Make the POST request
@@ -477,9 +563,25 @@ def shop_delete(request):
 
 @csrf_exempt
 def product_delete(request):
-    id=UserModel.objects.get(id=1).user_id
-    message=''
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+
+    shop_list=requests.get("http://127.0.0.1:8000/shops").json()
     product_list=requests.get("http://127.0.0.1:8000/listings").json()
+    shops=[]
+    products=[]
+
+    for item in shop_list:
+        if item['created_by']==id:
+            shops.append(item)
+    
+    for item in product_list:
+        for shop in shops:
+            if item["shop_id"]==shop["id"]:
+                products.append(item)
     if request.method=='POST':
 
         productid=request.POST.get('productid')
@@ -497,14 +599,19 @@ def product_delete(request):
 
     context={
         'id':id,
-        'products':product_list
+        'products':products
     }
 
     return render(request, 'product_delete.html',context)
 
 
 def order(request,user_id):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
     api_url = f"http://127.0.0.1:8000/orders"
     context={'data':[]}
     try:
@@ -527,7 +634,11 @@ def order(request,user_id):
 
 @csrf_exempt
 def shop_edit(request):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
 
     message=''
     shop_list=requests.get("http://127.0.0.1:8000/shops").json()
@@ -579,7 +690,12 @@ def shop_edit(request):
 
 @csrf_exempt
 def order_add(request):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
     message=''
     products=requests.get("http://127.0.0.1:8000/listings").json()
     if request.method=='POST':
@@ -598,7 +714,7 @@ def order_add(request):
             "address": address,
             "delivery_method": "standard",
             "updated_at": "2024-07-19T15:55:03.858669Z",
-            "status": "on_hold"
+            "status": "on_the_way"
         }
 
         # Make the POST request
@@ -619,8 +735,22 @@ def order_add(request):
 
 
 def order_detail(request,order_id):
-    id=UserModel.objects.get(id=1).user_id
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
     api_url = f"http://127.0.0.1:8000/orders/{order_id}"
+
+    deliveries=requests.get(f'http://127.0.0.1:8000/deliveries/').json()
+
+
+    delivery={}
+
+    for d in deliveries:
+        if d["order_id"]==order_id:
+            delivery=d
 
     context={'data':{}}
     try:
@@ -628,33 +758,82 @@ def order_detail(request,order_id):
         response = requests.get(api_url)
         response.raise_for_status()  # Raise an exception for HTTP errors
         data = response.json()
-        print(data)
+        
         product=requests.get(f'http://127.0.0.1:8000/listings/{data['order']['listing_id']}').json()
+        print(product,data['order']['listing_id'])
+
         context={
             'id':id,
             'data':data['order'],
-            'product':product
+            'product':product,
+            'delivery':delivery,
+            'total':product['price']*data['order']['quantity']
         }
     except requests.exceptions.RequestException as e:
         print('error')
     return render(request, 'order_details.html',context)
 
+@csrf_exempt
+def order_delete(request,order_id):
+    isAuth=cache.get('isAuth',default=False)
+    id=cache.get('userid',default=-1)
+    print('Auth cache data:',isAuth,id)
 
-def delivery_detail(request,order_id):
-    id=UserModel.objects.get(id=1).user_id
-    api_url = f"http://127.0.0.1:8000/deliveries/"
-    context={'data':{}}
-    try:
-        response = requests.get(api_url)
-        response.raise_for_status()  # Raise an exception for HTTP errors
-        list = response.json()
-        for d in list:
-            if d['order_id']==order_id:
-                data=d
-        context={
-            'id':id,
-            'data':data,
-            }
-    except requests.exceptions.RequestException as e:
-        print('error')
-    return render(request, 'delivery_detail.html',context)
+    if isAuth==False or id==-1:
+        return redirect(login)
+    
+    deliveries=requests.get(f'http://127.0.0.1:8000/deliveries/').json()
+    order=requests.get(f'http://127.0.0.1:8000/orders/{order_id}/').json()['order']
+    delivery={}
+    for d in deliveries:
+        if d["order_id"]==order_id:
+            delivery=d
+    
+    delivery_body={
+        "order_id": d["order_id"],
+        "delivery_status": "cancelled",
+        "tracking_number": d["tracking_number"],
+        "courier": d["courier"],
+        "estimated_delivery_date": d["estimated_delivery_date"],
+        "created_at": d["created_at"],
+        "updated_at": d["updated_at"]
+    }
+    order_body={
+        "user_id": order["user_id"],
+        "listing_id": order["listing_id"],
+        "delivery_provider": order["delivery_provider"],
+        "created_at": order["created_at"],
+        "quantity": order["quantity"],
+        "address": order["address"],
+        "delivery_method": order["delivery_method"],
+        "updated_at": order["updated_at"],
+        "status": "cancelled"
+    }
+
+    url = f'http://127.0.0.1:8000/orders/{order_id}/'
+
+    response = requests.put(url,json=order_body)
+
+
+    if response.status_code >= 200:
+        print('Success ',response.status_code)  
+        url = f'http://127.0.0.1:8000/deliveries/{d['id']}/'
+        response = requests.put(url,json=delivery_body)
+        if response.status_code >= 200:
+            print('Complete ',response.status_code)  
+        else:
+            print('Failed:', response.status_code, response.text)
+    else:
+        print('Failed:', response.status_code, response.text)
+    
+
+
+    return redirect(reverse('home', args=[id]))
+
+
+
+def logout(request):
+    #cache operations
+    cache.delete('isAuth')
+    cache.delete('userid')
+    return redirect(reverse('login'))

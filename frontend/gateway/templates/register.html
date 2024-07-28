@@ -28,7 +28,7 @@
   
          <div class="inputBox"> 
   
-          <input type="text" name="username" required> <i>Last name</i> 
+          <input type="text" name="username" required> <i>Username</i> 
    
          </div> 
   
@@ -44,7 +44,7 @@
   
         </div> 
   
-        <div class="links"> <a href="#"></a> <a href="{% url 'login' %}">Login</a> 
+        <div class="links"><a href="{% url 'login' %}">Login</a> 
   
         </div> 
         <div>
@@ -103,7 +103,7 @@ section::before
   position: absolute;
   width: 100%;
   height: 100%;
-  background: linear-gradient(#eee,#4a4a4a,#eee);
+  background: linear-gradient(#eee,#f33f3f,#eee);
   animation: animate 5s linear infinite;
 }
 @keyframes animate 
@@ -159,7 +159,7 @@ section .signin .content
 section .signin .content h2 
 {
   font-size: 2em;
-  color:#4a4a4a;
+  color:#eee;
   text-transform: uppercase;
 }
 section .signin .content .form 

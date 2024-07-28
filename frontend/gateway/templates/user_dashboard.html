@@ -31,23 +31,35 @@
           <div class="col-xl-8">
             <div class="card shadow">
               <div class="card-header">
-                Statistics
+                <strong>DashBoard</strong>
               </div>
               <div class="card-body">
                 <div class="row">
-                  <div class="col-xl-6">
+                  <div class="col-xl-3">
                     <div class="card shadow px-3 py-3 my-card">
                       <p><i class="bi bi-list-ul text-primary px-2"></i>Orders</p>
                       <h5 class="text-center">{{order_tally}}</h5>
                     </div>
                   </div>
-                  <div class="col-xl-6">
+                  <div class="col-xl-3">
                     <div class="card shadow px-3 py-3 my-card">
                       <p><i class="bi bi-check2-square text-dark px-2"></i>Shops</p>
                       <h5 class="text-center">{{shop_tally}}</h5>
                     </div>
                   </div>
+                    <div class="col-xl-3">
+                      <div class="card shadow px-3 py-3 my-card">
+                        <p><i class="bi bi-check2-square text-dark px-2"></i>Deliveries</p>
+                        <h5 class="text-center">{{delivery_tally}}</h5>
+                      </div>
+                    </div>
+                      <div class="col-xl-3">
+                        <div class="card shadow px-3 py-3 my-card">
+                          <p><i class="bi bi-check2-square text-dark px-2"></i>Products Created</p>
+                          <h5 class="text-center">{{product_tally}}</h5>
+                        </div>
                   </div>
+
                 </div>
               </div>
             </div>
@@ -56,9 +68,9 @@
       <!--End stats section-->
       <!--Starts graph section-->
       <div class="row">
-        <div class="col-xl-6">
+        <div class="col-xl-6 px-3 py-3">
             <div class="card shadow">
-              <div class="card-header">Order list</div>
+              <div class="card-header">Current Orders</div>
               <div class="card-body">
                 {%for item in orders %}
                 <li class="list-group-item">
@@ -73,16 +85,50 @@
               </div>
             </div>
           </div>
-          <div class="col-xl-6">
+          <div class="col-xl-6 px-3 py-3">
             <div class="card shadow">
-              <div class="card-header">Shop list</div>
+              <div class="card-header">Created Shops</div>
               <div class="card-body">
                 {%for item in shops %}
                 <li class="list-group-item">
                   <div class="row">
                     <div class="col-8">
-                      <p><small>Date: {{item.location}}</small></p>
-                      <strong>Order No: {{item.name}}</strong>
+                      <p><small>Location: {{item.location}}</small></p>
+                      <strong>Shop name: {{item.name}}</strong>
+                    </div>
+                  </div>
+                </li>
+                {%endfor%}
+              </div>
+            </div>
+          </div>
+          <div class="col-xl-6 px-3 py-3">
+            <div class="card shadow">
+              <div class="card-header">Created Products</div>
+              <div class="card-body">
+                {%for item in products %}
+                <li class="list-group-item">
+                  <div class="row">
+                    <div class="col-8">
+                      <p><small>Quantity: {{item.stock_quantity}}</small></p>
+                      <strong>Product name: {{item.name}}</strong>
+                    </div>
+                  </div>
+                </li>
+                {%endfor%}
+              </div>
+            </div>
+          </div>
+          <div class="col-xl-6 px-3 py-3">
+            <div class="card shadow">
+              <div class="card-header">Ongoing Deliveries</div>
+              <div class="card-body">
+                {%for item in deliveries %}
+                <li class="list-group-item">
+                  <div class="row">
+                    <div class="col-8">
+                      <p><small>Status: {{item.delivery_status}}</small></p>
+                      <strong>Delivery No: {{item.id}}</strong>
                     </div>
                   </div>
                 </li>

@@ -117,10 +117,15 @@ li.dropdown {
                   <a href="javascript:void(0)" class="dropbtn">Menu</a>
                   <div class="dropdown-content">
                     <a href="{% url 'product_add' %}">Post Product</a>
+                    <a href="{% url 'product_edit' %}">Update Your Product</a>
+                    <a href="{% url 'product_delete' %}">Delete Product</a>
                     <a href="{% url 'shop_add' %}">Create Shop</a>
+                    <a href="{% url 'shop_edit' %}">Update Your Shops</a>
+                    <a href="{% url 'shop_delete' %}">Delete Shop</a>
                     <a href="{% url 'order_add' %}">Make An Order</a>
                     <a href="{% url 'profile' id %}">View/Edit Profile</a>
                     <a href="{% url 'dashboard' id %}">View Profile Data</a>
+                    <a href="{% url 'logout' %}">Logout</a>
                   </div>
                 </div>
               </li>
